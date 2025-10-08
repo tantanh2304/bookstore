@@ -6,26 +6,41 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #559f72 0%, #1e763a 100%);
     min-height: 100vh;
     color: #333;
 }
 
 .navbar {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 1.2rem 2rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+    padding: 0.5rem 1rem;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #ddd;
 }
 
+.navbar-left {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-left .logo {
+    width: 50px;       
+    height: 50px;
+    margin-right: 0.5rem;
+}
+
+.navbar-right a,
+.navbar-right span {
+    margin-left: 1rem;
+    text-decoration: none;
+    color: #333;
+}
+
+
 .navbar h1 {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -48,7 +63,7 @@ body {
 }
 
 .navbar a:hover {
-    color: #667eea;
+    color: #1b7153;
     transform: translateY(-2px);
 }
 
@@ -59,7 +74,7 @@ body {
     left: 0;
     width: 0;
     height: 2px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a  100%);
     transition: width 0.3s ease;
 }
 
@@ -74,7 +89,21 @@ body {
     background: rgba(102, 126, 234, 0.1);
     border-radius: 20px;
 }
+footer {
+    background-color: #333;
+    color: #fff;
+    padding: 1.8rem 1rem;
+    text-align: center;
+}
 
+footer p {
+    margin: 0.3rem 0;
+}
+
+footer i {
+    margin-right: 0.3rem;
+    color: #ffdd57;
+}
 .container {
     max-width: 1200px;
     margin: 2rem auto;
@@ -190,7 +219,7 @@ body {
 .price {
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a  100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -206,7 +235,7 @@ body {
 .btn {
     display: inline-block;
     padding: 0.8rem 1.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a  100%);
     color: white;
     text-decoration: none;
     border-radius: 10px;
@@ -233,7 +262,7 @@ body {
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+    background: linear-gradient(135deg, #b9b7b7 0%, #f45c43 100%);
     box-shadow: 0 4px 15px rgba(235, 51, 73, 0.3);
 }
 
@@ -253,7 +282,7 @@ body {
 .form-container h2 {
     text-align: center;
     margin-bottom: 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -314,7 +343,7 @@ table {
 }
 
 thead {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg,  #559f72 0%, #1e763a  100%);
     color: white;
 }
 

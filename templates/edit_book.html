@@ -31,8 +31,11 @@
             <label>Tồn kho:</label>
             <input type="number" name="stock" value="{{ book.stock }}" required>
         </div>
-        <button type="submit" class="btn btn-success">💾 Cập nhật</button>
-        <a href="{{ url_for('admin') }}" class="btn btn-danger">❌ Hủy</a>
+        <div style="text-align: center; margin-top: 1rem;">
+        <button type="submit" class="btn btn-success" style="margin-right: 1rem;">Cập nhật</button>
+        <a href="{{ url_for('admin') }}" class="btn btn-danger">Hủy</a>
+        </div>
+
     </form>
 </div>
 {% endblock %}

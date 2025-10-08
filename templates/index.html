@@ -3,7 +3,7 @@
 {% block content %}
 <form class="search-form" method="GET">
     <input type="text" name="search" placeholder="Tìm kiếm sách theo tên hoặc tác giả..." value="{{ search }}">
-    <button type="submit" class="btn">🔍 Tìm kiếm</button>
+    <button type="submit" class="btn"> Tìm kiếm</button>
 </form>
 
 <div class="book-grid">
@@ -15,7 +15,7 @@
         <p><strong>Tác giả:</strong> {{ book.author }}</p>
         <p>{{ book.description[:100] }}{% if book.description|length > 100 %}...{% endif %}</p>
         <div class="price">{{ "{:,.0f}".format(book.price) }} đ</div>
-        <p class="stock">📦 Còn lại: {{ book.stock }} cuốn</p>
+        <p class="stock"> Còn lại: {{ book.stock }} cuốn</p>
         {% if session.user_id %}
             <a href="{{ url_for('add_to_cart', book_id=book.id) }}" class="btn">🛒 Thêm vào giỏ</a>
         {% else %}
