@@ -15,7 +15,6 @@
         <h3>📋 Chi tiết đơn hàng</h3>
         <p><strong>Mã đơn hàng:</strong> #{{ order.id }}</p>
         <p><strong>Ngày đặt:</strong> {{ order.date }}</p>
-        <p><strong>Sản phẩm:</strong> {{ order.items }}</p>
         <p><strong>Tổng tiền:</strong> <span style="color: #667eea; font-size: 1.3rem; font-weight: 700;">{{ "{:,.0f}".format(order.total) }} đ</span></p>
     </div>
     

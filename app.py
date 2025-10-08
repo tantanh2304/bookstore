@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+#app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://book_store_sql_user:wfcjH1HyloTKgWBbLjsC1VwQ8l2dflAn@dpg-d3j0he6mcj7s739iub3g-a.oregon-postgres.render.com/book_store_sql'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -77,15 +77,29 @@ def admin_required(f):
 @app.route('/')
 def index():
     search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 9  # Số sách mỗi trang
+    
     if search:
-        books = Book.query.filter(
+        # Tìm kiếm với phân trang
+        pagination = Book.query.filter(
             (Book.title.ilike(f'%{search}%')) | 
             (Book.author.ilike(f'%{search}%'))
-        ).all()
+        ).paginate(page=page, per_page=per_page, error_out=False)
     else:
-        books = Book.query.all()
+        # Lấy tất cả sách với phân trang
+        pagination = Book.query.paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('index.html', books=books, search=search)
+    books = pagination.items
+    total = pagination.total
+    total_pages = pagination.pages
+    
+    return render_template('index.html', 
+                         books=books, 
+                         search=search,
+                         page=page,
+                         total_pages=total_pages,
+                         total=total)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -143,6 +157,42 @@ def cart():
     cart_items = Cart.query.filter_by(user_id=session['user_id']).all()
     total = sum(item.book.price * item.quantity for item in cart_items)
     return render_template('cart.html', cart_items=cart_items, total=total)
+
+@app.route('/my-orders')
+@login_required
+def my_orders():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10  # Số đơn hàng mỗi trang
+    
+    # Lấy đơn hàng của user hiện tại với phân trang
+    pagination = Order.query.filter_by(user_id=session['user_id'])\
+        .order_by(Order.created_at.desc())\
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    orders = pagination.items
+    total_pages = pagination.pages
+    
+    # Tính tổng tiền đã chi tiêu
+    total_spent = db.session.query(db.func.sum(Order.total))\
+        .filter_by(user_id=session['user_id']).scalar() or 0
+    
+    return render_template('my_orders.html', 
+                         orders=orders, 
+                         page=page,
+                         total_pages=total_pages,
+                         total_spent=total_spent)
+
+@app.route('/order/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    order = Order.query.get_or_404(order_id)
+    
+    # Kiểm tra quyền xem đơn hàng
+    if order.user_id != session['user_id'] and not session.get('is_admin'):
+        flash('Bạn không có quyền xem đơn hàng này!', 'error')
+        return redirect(url_for('my_orders'))
+    
+    return render_template('order_detail.html', order=order)
 
 @app.route('/add_to_cart/<int:book_id>')
 @login_required
@@ -207,6 +257,92 @@ def order_success():
     
     order_info = session.pop('last_order')
     return render_template('order_success.html', order=order_info)
+
+# User Management Routes
+@app.route('/admin/users')
+@admin_required
+def manage_users():
+    users = User.query.order_by(User.created_at.desc()).all()
+    return render_template('manage_users.html', users=users)
+
+@app.route('/admin/user/<int:user_id>')
+@admin_required
+def view_user(user_id):
+    user = User.query.get_or_404(user_id)
+    orders = Order.query.filter_by(user_id=user_id).order_by(Order.created_at.desc()).all()
+    total_spent = db.session.query(db.func.sum(Order.total)).filter_by(user_id=user_id).scalar() or 0
+    
+    return render_template('view_user.html', user=user, orders=orders, total_spent=total_spent)
+
+@app.route('/admin/user/<int:user_id>/toggle_active')
+@admin_required
+def toggle_user_active(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Không cho phép khóa chính mình
+    if user.id == session['user_id']:
+        flash('Bạn không thể khóa tài khoản của chính mình!', 'error')
+        return redirect(url_for('manage_users'))
+    
+    user.is_active = not user.is_active
+    db.session.commit()
+    
+    status = 'kích hoạt' if user.is_active else 'khóa'
+    flash(f'Đã {status} tài khoản {user.username}!', 'success')
+    return redirect(url_for('manage_users'))
+
+@app.route('/admin/user/<int:user_id>/toggle_admin')
+@admin_required
+def toggle_user_admin(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Không cho phép tự bỏ quyền admin của mình
+    if user.id == session['user_id']:
+        flash('Bạn không thể thay đổi quyền admin của chính mình!', 'error')
+        return redirect(url_for('manage_users'))
+    
+    user.is_admin = not user.is_admin
+    db.session.commit()
+    
+    status = 'cấp quyền' if user.is_admin else 'gỡ quyền'
+    flash(f'Đã {status} admin cho {user.username}!', 'success')
+    return redirect(url_for('manage_users'))
+
+@app.route('/admin/user/<int:user_id>/delete')
+@admin_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    
+    # Không cho phép xóa chính mình
+    if user.id == session['user_id']:
+        flash('Bạn không thể xóa tài khoản của chính mình!', 'error')
+        return redirect(url_for('manage_users'))
+    
+    # Xóa các đơn hàng và giỏ hàng liên quan
+    Order.query.filter_by(user_id=user_id).delete()
+    Cart.query.filter_by(user_id=user_id).delete()
+    
+    db.session.delete(user)
+    db.session.commit()
+    
+    flash(f'Đã xóa tài khoản {user.username}!', 'success')
+    return redirect(url_for('manage_users'))
+
+@app.route('/admin/user/<int:user_id>/reset_password', methods=['POST'])
+@admin_required
+def reset_user_password(user_id):
+    user = User.query.get_or_404(user_id)
+    new_password = request.form.get('new_password')
+    
+    if not new_password or len(new_password) < 6:
+        flash('Mật khẩu phải có ít nhất 6 ký tự!', 'error')
+        return redirect(url_for('view_user', user_id=user_id))
+    
+    user.password = generate_password_hash(new_password)
+    db.session.commit()
+    
+    flash(f'Đã đặt lại mật khẩu cho {user.username}!', 'success')
+    return redirect(url_for('view_user', user_id=user_id))
 
 # Admin routes
 @app.route('/admin')

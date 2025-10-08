@@ -3,33 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Nhà Sách Online{% endblock %}</title>
+    <title>{% block title %}Tiệm sách Rozy{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
+    <div class="wrapper">
     <nav class="navbar">
-    <div class="navbar-left">
-        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
-        <h1>Tiệm Sách Rozy</h1>
-    </div>
-    <div class="navbar-right">
-        <a href="{{ url_for('index') }}">Trang chủ</a>
-        {% if session.user_id %}
-            <a href="{{ url_for('cart') }}">Giỏ hàng</a>
-            {% if session.is_admin %}
-                <a href="{{ url_for('admin') }}">Quản lý</a>
+        <div class="navbar-left">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
+            <h1>Tiệm Sách Rozy</h1>
+        </div>
+        <div class="navbar-right">
+            <a href="{{ url_for('index') }}">Trang chủ</a>
+            {% if session.user_id %}
+                <a href="{{ url_for('cart') }}">
+                    <i class="fas fa-shopping-cart"></i> Giỏ hàng
+                </a>
+                <a href="{{ url_for('my_orders') }}">
+                    <i class="fas fa-box"></i> Đơn hàng
+                </a>
+                
+                {% if session.is_admin %}
+                    <div class="dropdown">
+                        <a href="#" class="dropdown-toggle">
+                            <i class="fas fa-cog"></i> Quản lý <i class="fas fa-caret-down"></i>
+                        </a>
+                        <div class="dropdown-menu">
+                            <a href="{{ url_for('admin') }}">
+                                <i class="fas fa-book"></i> Quản lý sách
+                            </a>
+                            <a href="{{ url_for('manage_users') }}">
+                                <i class="fas fa-users"></i> Quản lý người dùng
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+                <span class="user-greeting">
+                    <i class="fas fa-user-circle"></i> {{ session.username }}
+                </span>
+                <a href="{{ url_for('logout') }}" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                </a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                </a>
+                <a href="{{ url_for('register') }}" class="register-btn">
+                    <i class="fas fa-user-plus"></i> Đăng ký
+                </a>
             {% endif %}
-            <span>Xin chào, {{ session.username }}</span>
-            <a href="{{ url_for('logout') }}">Đăng xuất</a>
-        {% else %}
-            <a href="{{ url_for('login') }}">Đăng nhập</a>
-            <a href="{{ url_for('register') }}">Đăng ký</a>
-        {% endif %}
-    </div>
-</nav>
+        </div>
+    </nav>
 
-    
     <div class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -41,15 +67,135 @@
         
         {% block content %}{% endblock %}
     </div>
-    <footer>
-        <div class="footer-container">
-            <p>&copy; 2025 Bookstore. All rights reserved.</p>
-            <p>
-                <i class="fas fa-phone"></i> 1102-1210-3107 | 
-                <i class="fas fa-envelope"></i> thanhtrucdieulinh@bookrozy.com
-            </p>
-        </div>
-    </footer>
+    </div>
+    
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Dropdown menu functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdown = document.querySelector('.dropdown');
+            if (dropdown) {
+                const toggle = dropdown.querySelector('.dropdown-toggle');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    dropdown.classList.toggle('active');
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target)) {
+                        dropdown.classList.remove('active');
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <style>
+        /* Dropdown styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .dropdown-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        
+        .dropdown-toggle i {
+            font-size: 0.8em;
+            transition: transform 0.3s;
+        }
+        
+        .dropdown.active .dropdown-toggle i {
+            transform: rotate(180deg);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            min-width: 220px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s;
+            z-index: 1000;
+            margin-top: 5px;
+        }
+        
+        .dropdown.active .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .dropdown-menu a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dropdown-menu a:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-menu a:hover {
+            background: #f8f9fa;
+            color: #4CAF50;
+        }
+        
+        .dropdown-menu a i {
+            width: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .dropdown-menu a:hover i {
+            color: #4CAF50;
+        }
+        
+        .user-greeting {
+            padding: 10px 15px;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .dropdown-menu {
+                left: auto;
+                right: 0;
+            }
+            
+            .navbar-right {
+                flex-wrap: wrap;
+            }
+            
+            .user-greeting {
+                display: none;
+            }
+        }
+    </style>
 </body>
 </html>

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Đơn hàng của tôi - Tiệm Sách Rozy{% endblock %}
+
+{% block content %}
+<div class="orders-header">
+    <h2>📦 Đơn hàng của tôi</h2>
+    <div class="total-spent">
+        <i class="fas fa-wallet"></i>
+        <div>
+            <span>Tổng chi tiêu</span>
+            <strong>{{ "{:,.0f}".format(total_spent) }} đ</strong>
+        </div>
+    </div>
+</div>
+
+{% if orders %}
+<div class="orders-list">
+    {% for order in orders %}
+    <div class="order-card">
+        <div class="order-header">
+            <div class="order-info">
+                <h3>
+                    <i class="fas fa-receipt"></i>
+                    Đơn hàng #{{ order.id }}
+                </h3>
+                <span class="order-date">
+                    <i class="far fa-calendar"></i>
+                    {{ order.created_at.strftime('%d/%m/%Y %H:%M') }}
+                </span>
+            </div>
+            <div class="order-status status-{{ order.status }}">
+                {% if order.status == 'pending' %}
+                    <i class="fas fa-clock"></i> Đang xử lý
+                {% elif order.status == 'completed' %}
+                    <i class="fas fa-check-circle"></i> Hoàn thành
+                {% elif order.status == 'cancelled' %}
+                    <i class="fas fa-times-circle"></i> Đã hủy
+                {% else %}
+                    <i class="fas fa-shipping-fast"></i> Đang giao
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="order-items">
+            <p><strong>Sản phẩm:</strong> {{ order.items }}</p>
+        </div>
+        
+        <div class="order-footer">
+            <div class="order-total">
+                <span>Tổng tiền:</span>
+                <strong>{{ "{:,.0f}".format(order.total) }} đ</strong>
+            </div>
+            <a href="{{ url_for('order_detail', order_id=order.id) }}" class="btn btn-detail">
+                <i class="fas fa-eye"></i> Xem chi tiết
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Phân trang -->
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}" class="pagination-btn">
+        <i class="fas fa-chevron-left"></i> Trước
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled">
+        <i class="fas fa-chevron-left"></i> Trước
+    </span>
+    {% endif %}
+    
+    <div class="pagination-numbers">
+        {% if page > 3 %}
+        <a href="?page=1" class="pagination-number">1</a>
+        {% if page > 4 %}
+        <span class="pagination-dots">...</span>
+        {% endif %}
+        {% endif %}
+        
+        {% for p in range([1, page - 2]|max, [total_pages + 1, page + 3]|min) %}
+        {% if p == page %}
+        <span class="pagination-number active">{{ p }}</span>
+        {% else %}
+        <a href="?page={{ p }}" class="pagination-number">{{ p }}</a>
+        {% endif %}
+        {% endfor %}
+        
+        {% if page < total_pages - 2 %}
+        {% if page < total_pages - 3 %}
+        <span class="pagination-dots">...</span>
+        {% endif %}
+        <a href="?page={{ total_pages }}" class="pagination-number">{{ total_pages }}</a>
+        {% endif %}
+    </div>
+    
+    {% if page < total_pages %}
+    <a href="?page={{ page + 1 }}" class="pagination-btn">
+        Sau <i class="fas fa-chevron-right"></i>
+    </a>
+    {% else %}
+    <span class="pagination-btn disabled">
+        Sau <i class="fas fa-chevron-right"></i>
+    </span>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-orders">
+    <i class="fas fa-shopping-bag"></i>
+    <h3>Chưa có đơn hàng nào</h3>
+    <p>Hãy khám phá và mua sắm ngay!</p>
+    <a href="{{ url_for('index') }}" class="btn">
+        <i class="fas fa-book"></i> Xem sách
+    </a>
+</div>
+{% endif %}
+
+{% endblock %}
