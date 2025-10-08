@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Giỏ hàng của bạn</h2>
+
+{% if cart_items %}
+<table>
+    <thead>
+        <tr>
+            <th>Sách</th>
+            <th>Tác giả</th>
+            <th>Giá</th>
+            <th>Số lượng</th>
+            <th>Thành tiền</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in cart_items %}
+        <tr>
+            <td>{{ item.book.title }}</td>
+            <td>{{ item.book.author }}</td>
+            <td>{{ "{:,.0f}".format(item.book.price) }} đ</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ "{:,.0f}".format(item.book.price * item.quantity) }} đ</td>
+            <td>
+                <a href="{{ url_for('remove_from_cart', cart_id=item.id) }}" 
+                   class="btn btn-danger"
+                   onclick="return confirmDelete('Bạn có chắc muốn xóa sách này khỏi giỏ hàng?')">
+                    Xóa
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight: bold; background: #ecf0f1;">
+            <td colspan="4" style="text-align: right;">Tổng cộng:</td>
+            <td colspan="2">{{ "{:,.0f}".format(total) }} đ</td>
+        </tr>
+    </tbody>
+</table>
+
+<form method="POST" action="{{ url_for('checkout') }}" style="margin-top: 2rem;">
+    <button type="submit" class="btn btn-success">💳 Thanh toán</button>
+</form>
+{% else %}
+<p>Giỏ hàng của bạn đang trống.</p>
+<a href="{{ url_for('index') }}" class="btn">Tiếp tục mua sắm</a>
+{% endif %}
+{% endblock %}

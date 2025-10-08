@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Đăng ký tài khoản</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label>Tên đăng nhập:</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label>Mật khẩu:</label>
+            <input type="password" name="password" required minlength="6">
+        </div>
+        <button type="submit" class="btn">Đăng ký</button>
+        <p style="margin-top: 1rem; text-align: center;">
+            Đã có tài khoản? <a href="{{ url_for('login') }}">Đăng nhập</a>
+        </p>
+    </form>
+</div>
+{% endblock %}

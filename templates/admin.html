@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Quản lý sách</h2>
+
+<div class="admin-controls">
+    <a href="{{ url_for('add_book') }}" class="btn btn-success">➕ Thêm sách mới</a>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tiêu đề</th>
+            <th>Tác giả</th>
+            <th>Giá</th>
+            <th>Tồn kho</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for book in books %}
+        <tr>
+            <td>{{ book.id }}</td>
+            <td>{{ book.title }}</td>
+            <td>{{ book.author }}</td>
+            <td>{{ "{:,.0f}".format(book.price) }} đ</td>
+            <td>{{ book.stock }}</td>
+            <td>
+                <a href="{{ url_for('edit_book', book_id=book.id) }}" class="btn">✏️ Sửa</a>
+                <a href="{{ url_for('delete_book', book_id=book.id) }}" 
+                   class="btn btn-danger"
+                   onclick="return confirmDelete('Bạn có chắc muốn xóa sách này?')">
+                    🗑️ Xóa
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
