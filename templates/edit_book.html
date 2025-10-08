@@ -17,6 +17,13 @@
             <input type="number" name="price" value="{{ book.price }}" step="1000" required>
         </div>
         <div class="form-group">
+            <label>URL hình ảnh:</label>
+            <input type="url" name="image_url" value="{{ book.image_url }}" placeholder="https://example.com/image.jpg">
+            {% if book.image_url %}
+            <img src="{{ book.image_url }}" alt="Preview" style="max-width: 200px; margin-top: 0.5rem; border-radius: 8px;">
+            {% endif %}
+        </div>
+        <div class="form-group">
             <label>Mô tả:</label>
             <textarea name="description" rows="4">{{ book.description }}</textarea>
         </div>
@@ -24,8 +31,8 @@
             <label>Tồn kho:</label>
             <input type="number" name="stock" value="{{ book.stock }}" required>
         </div>
-        <button type="submit" class="btn btn-success">Cập nhật</button>
-        <a href="{{ url_for('admin') }}" class="btn btn-danger">Hủy</a>
+        <button type="submit" class="btn btn-success">💾 Cập nhật</button>
+        <a href="{{ url_for('admin') }}" class="btn btn-danger">❌ Hủy</a>
     </form>
 </div>
 {% endblock %}

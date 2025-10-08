@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-icon">
+        <svg viewBox="0 0 24 24">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+    </div>
+    
+    <h2>Đặt hàng thành công! 🎉</h2>
+    <p>Cảm ơn bạn đã mua sắm tại Tiệm Sách Rozy!</p>
+    
+    <div class="order-details">
+        <h3>📋 Chi tiết đơn hàng</h3>
+        <p><strong>Mã đơn hàng:</strong> #{{ order.id }}</p>
+        <p><strong>Ngày đặt:</strong> {{ order.date }}</p>
+        <p><strong>Sản phẩm:</strong> {{ order.items }}</p>
+        <p><strong>Tổng tiền:</strong> <span style="color: #667eea; font-size: 1.3rem; font-weight: 700;">{{ "{:,.0f}".format(order.total) }} đ</span></p>
+    </div>
+    
+    <p style="color: #888; font-size: 0.95rem; margin-bottom: 2rem;">
+        Chúng tôi sẽ liên hệ với bạn sớm nhất để xác nhận đơn hàng.
+    </p>
+    
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="{{ url_for('index') }}" class="btn">🏠 Về trang chủ</a>
+        <a href="{{ url_for('cart') }}" class="btn btn-success">🛒 Tiếp tục mua sắm</a>
+    </div>
+</div>
+{% endblock %}

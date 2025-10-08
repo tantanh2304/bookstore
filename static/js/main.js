@@ -1,11 +1,18 @@
+// Xác nhận xóa
+function confirmDelete(message) {
+    return confirm(message);
+}
+
 // Tự động ẩn flash messages sau 5 giây
 document.addEventListener('DOMContentLoaded', function() {
     const flashMessages = document.querySelectorAll('.flash');
     
     flashMessages.forEach(function(message) {
         setTimeout(function() {
-            message.style.transition = 'opacity 0.5s ease';
+            message.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
             message.style.opacity = '0';
+            message.style.transform = 'translateY(-20px)';
+            
             setTimeout(function() {
                 message.remove();
             }, 500);
@@ -13,51 +20,48 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Xác nhận trước khi xóa
-function confirmDelete(message) {
-    return confirm(message || 'Bạn có chắc muốn xóa?');
-}
+// Animation cho book cards khi scroll
+const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+};
 
-// Form validation
-document.addEventListener('DOMContentLoaded', function() {
-    const forms = document.querySelectorAll('form');
+const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+        }
+    });
+}, observerOptions);
+
+// Áp dụng animation cho tất cả book cards
+window.addEventListener('load', function() {
+    const bookCards = document.querySelectorAll('.book-card');
     
-    forms.forEach(function(form) {
-        form.addEventListener('submit', function(e) {
-            const requiredFields = form.querySelectorAll('[required]');
-            let isValid = true;
-            
-            requiredFields.forEach(function(field) {
-                if (!field.value.trim()) {
-                    isValid = false;
-                    field.style.borderColor = '#e74c3c';
-                } else {
-                    field.style.borderColor = '#ddd';
-                }
-            });
-            
-            if (!isValid) {
-                e.preventDefault();
-                alert('Vui lòng điền đầy đủ thông tin!');
+    bookCards.forEach(function(card, index) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        card.style.transition = `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`;
+        observer.observe(card);
+    });
+});
+
+// Lazy loading cho hình ảnh
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('.book-image');
+    
+    const imageObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.classList.add('loaded');
+                imageObserver.unobserve(img);
             }
         });
     });
-});
-
-// Smooth scroll
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth'
-            });
-        }
+    
+    images.forEach(function(img) {
+        imageObserver.observe(img);
     });
 });
-
-// Format number with thousand separator
-function formatPrice(price) {
-    return new Intl.NumberFormat('vi-VN').format(price);
-}

@@ -18,4 +18,4 @@ with app.app_context():
         db.session.add(book)
     
     db.session.commit()
-    print(f"✅ Đã thêm {len(books)} cuốn sách mẫu!")
+    print(f" Đã thêm {len(books)} cuốn sách mẫu!")

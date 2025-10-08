@@ -30,6 +30,7 @@ class Book(db.Model):
     price = db.Column(db.Float, nullable=False)
     description = db.Column(db.Text)
     stock = db.Column(db.Integer, default=0)
+    image_url = db.Column(db.String(500), default='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Cart(db.Model):
@@ -187,8 +188,25 @@ def checkout():
         db.session.delete(item)
     
     db.session.commit()
-    flash('Đặt hàng thành công!', 'success')
-    return redirect(url_for('index'))
+    
+    # Lưu thông tin đơn hàng vào session để hiển thị trang thành công
+    session['last_order'] = {
+        'id': order.id,
+        'total': total,
+        'items': items_text,
+        'date': order.created_at.strftime('%d/%m/%Y %H:%M')
+    }
+    
+    return redirect(url_for('order_success'))
+
+@app.route('/order-success')
+@login_required
+def order_success():
+    if 'last_order' not in session:
+        return redirect(url_for('index'))
+    
+    order_info = session.pop('last_order')
+    return render_template('order_success.html', order=order_info)
 
 # Admin routes
 @app.route('/admin')
@@ -206,9 +224,10 @@ def add_book():
         price = float(request.form['price'])
         description = request.form['description']
         stock = int(request.form['stock'])
+        image_url = request.form.get('image_url', 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400')
         
         book = Book(title=title, author=author, price=price, 
-                   description=description, stock=stock)
+                   description=description, stock=stock, image_url=image_url)
         db.session.add(book)
         db.session.commit()
         
@@ -228,6 +247,7 @@ def edit_book(book_id):
         book.price = float(request.form['price'])
         book.description = request.form['description']
         book.stock = int(request.form['stock'])
+        book.image_url = request.form.get('image_url', book.image_url)
         
         db.session.commit()
         flash('Đã cập nhật sách!', 'success')
@@ -248,4 +268,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
