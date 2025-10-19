@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin_statistics.css') }}">
+{% endblock %}
+{% block title %}Thống kê & Báo cáo{% endblock %}
+
+{% block content %}
+<div class="statistics-container">
+    <div class="stats-header">
+        <h1><i class="fas fa-chart-line"></i> Thống kê & Báo cáo</h1>
+        <p>Tổng quan về doanh thu và hoạt động kinh doanh</p>
+    </div>
+
+    <!-- Bộ lọc thời gian -->
+    <div class="time-filter">
+        <form method="GET" id="filterForm">
+            <div class="filter-group">
+                <label><i class="fas fa-calendar"></i> Lọc theo thời gian:</label>
+                <select name="period" onchange="this.form.submit()">
+                    <option value="7" {% if period == 7 %}selected{% endif %}>7 ngày qua</option>
+                    <option value="30" {% if period == 30 %}selected{% endif %}>30 ngày qua</option>
+                    <option value="90" {% if period == 90 %}selected{% endif %}>90 ngày qua</option>
+                    <option value="365" {% if period == 365 %}selected{% endif %}>1 năm qua</option>
+                    <option value="all" {% if period == 'all' %}selected{% endif %}>Toàn bộ</option>
+                </select>
+            </div>
+        </form>
+    </div>
+
+    <!-- Thống kê tổng quan -->
+    <div class="stats-grid">
+        <div class="stat-card revenue">
+            <div class="stat-icon">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Tổng doanh thu</h3>
+                <p class="stat-value">{{ '{:,.0f}'.format(total_revenue or 0) }}đ</p>
+                <span class="stat-label">Từ {{ completed_orders or 0 }} đơn hoàn thành</span>
+            </div>
+        </div>
+
+        <div class="stat-card orders">
+            <div class="stat-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Tổng đơn hàng</h3>
+                <p class="stat-value">{{ total_orders or 0 }}</p>
+                <span class="stat-label">Đang xử lý: {{ (pending_orders or 0) + (processing_orders or 0) }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card customers">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Khách hàng</h3>
+                <p class="stat-value">{{ total_users or 0 }}</p>
+                <span class="stat-label">Admin: {{ admin_users or 0 }}</span>
+            </div>
+        </div>
+
+        <div class="stat-card books">
+            <div class="stat-icon">
+                <i class="fas fa-book"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Sách trong kho</h3>
+                <p class="stat-value">{{ total_books or 0 }}</p>
+                <span class="stat-label">Tồn kho: {{ total_stock or 0 }} cuốn</span>
+            </div>
+        </div>
+
+        <div class="stat-card average">
+            <div class="stat-icon">
+                <i class="fas fa-receipt"></i>
+            </div>
+            <div class="stat-info">
+                <h3>Giá trị TB/Đơn</h3>
+                <p class="stat-value">{{ '{:,.0f}'.format(average_order_value or 0) }}đ</p>
+                <span class="stat-label">Dựa trên đơn hoàn thành</span>
+            </div>
+        </div>
+
+        <div class="stat-card pending-revenue">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-info">
+                <h3>DT chờ xử lý</h3>
+                <p class="stat-value">{{ '{:,.0f}'.format(pending_revenue or 0) }}đ</p>
+                <span class="stat-label">Từ {{ pending_orders or 0 }} đơn</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Biểu đồ doanh thu theo thời gian -->
+    <div class="chart-section">
+        <h2><i class="fas fa-chart-area"></i> Doanh thu theo thời gian</h2>
+        <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Biểu đồ trạng thái đơn hàng -->
+    <div class="charts-row">
+        <div class="chart-section half">
+            <h2><i class="fas fa-chart-pie"></i> Phân bố trạng thái đơn hàng</h2>
+            <div class="chart-container">
+                <canvas id="orderStatusChart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-section half">
+            <h2><i class="fas fa-chart-bar"></i> Doanh thu theo trạng thái</h2>
+            <div class="chart-container">
+                <canvas id="revenueByStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top khách hàng -->
+    <div class="table-section">
+        <h2><i class="fas fa-crown"></i> Top 10 Khách hàng VIP</h2>
+        <div class="table-responsive">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Hạng</th>
+                        <th>Tên khách hàng</th>
+                        <th>Email</th>
+                        <th>Số đơn hàng</th>
+                        <th>Tổng chi tiêu</th>
+                        <th>TB/Đơn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in top_customers or [] %}
+                    <tr>
+                        <td>
+                            {% if loop.index <= 3 %}
+                                <span class="rank-badge rank-{{ loop.index }}">
+                                    {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% else %}🥉{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="rank-number">{{ loop.index }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ customer.username }}</strong></td>
+                        <td>{{ customer.email }}</td>
+                        <td><span class="badge badge-info">{{ customer.order_count }} đơn</span></td>
+                        <td><strong class="text-success">{{ '{:,.0f}'.format(customer.total_spent or 0) }}đ</strong></td>
+                        <td>{{ '{:,.0f}'.format((customer.total_spent or 0) / (customer.order_count or 1)) }}đ</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top sách bán chạy -->
+    <div class="table-section">
+        <h2><i class="fas fa-fire"></i> Top 10 Sách bán chạy</h2>
+        <div class="table-responsive">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Hạng</th>
+                        <th>Tên sách</th>
+                        <th>Số lượng đã bán</th>
+                        <th>Phần trăm</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set total_books_sold = total_books_sold or (top_books[0][1] if top_books else 1) %}
+                    {% for book in top_books or [] %}
+                    <tr>
+                        <td>
+                            {% if loop.index <= 3 %}
+                                <span class="rank-badge rank-{{ loop.index }}">
+                                    {% if loop.index == 1 %}🏆{% elif loop.index == 2 %}🎖️{% else %}🏅{% endif %}
+                                </span>
+                            {% else %}
+                                <span class="rank-number">{{ loop.index }}</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ book[0] }}</strong></td>
+                        <td><span class="badge badge-warning">{{ book[1] }} cuốn</span></td>
+                        <td>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ (book[1] / (top_books[0][1] or 1) * 100) }}%"></div>
+                                <span class="progress-text">{{ '{:.1f}'.format(book[1] / (total_books_sold or 1) * 100) }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Nút xuất báo cáo -->
+    <div class="export-section">
+        <a href="{{ url_for('export_statistics', period=period or 'all') }}" class="btn-export">
+            <i class="fas fa-file-excel"></i> Xuất báo cáo Excel
+        </a>
+        <a href="{{ url_for('export_orders', status='all') }}" class="btn-export">
+            <i class="fas fa-file-csv"></i> Xuất danh sách đơn hàng
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Dữ liệu cho biểu đồ
+    const revenueData = {{ (revenue_by_date or []) | tojson }};
+    const orderStatusData = {
+        pending: {{ pending_orders or 0 }},
+        processing: {{ processing_orders or 0 }},
+        completed: {{ completed_orders or 0 }},
+        cancelled: {{ cancelled_orders or 0 }}
+    };
+
+    // Biểu đồ doanh thu theo thời gian
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'line',
+        data: {
+            labels: revenueData.map(item => item.date),
+            datasets: [{
+                label: 'Doanh thu (đ)',
+                data: revenueData.map(item => item.revenue),
+                borderColor: '#4CAF50',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // Biểu đồ trạng thái đơn hàng (Pie)
+    const statusCtx = document.getElementById('orderStatusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Chờ xử lý', 'Đang xử lý', 'Hoàn thành', 'Đã hủy'],
+            datasets: [{
+                data: [
+                    orderStatusData.pending,
+                    orderStatusData.processing,
+                    orderStatusData.completed,
+                    orderStatusData.cancelled
+                ],
+                backgroundColor: ['#FFC107', '#2196F3', '#4CAF50', '#F44336']
+            }]
+        }
+    });
+
+    // Biểu đồ doanh thu theo trạng thái
+    const revenueStatusCtx = document.getElementById('revenueByStatusChart').getContext('2d');
+    new Chart(revenueStatusCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Chờ xử lý', 'Đang xử lý', 'Hoàn thành', 'Đã hủy'],
+            datasets: [{
+                label: 'Doanh thu (đ)',
+                data: [
+                    {{ pending_revenue or 0 }},
+                    {{ processing_revenue or 0 }},
+                    {{ total_revenue or 0 }},
+                    {{ cancelled_revenue or 0 }}
+                ],
+                backgroundColor: ['#FFC107', '#2196F3', '#4CAF50', '#F44336']
+            }]
+        }
+    });
+</script>
+{% endblock %}

@@ -15,24 +15,35 @@
 
 <div class="book-grid">
     {% for book in books %}
-    <div class="book-card">
-        <img src="{{ book.image_url }}" alt="{{ book.title }}" class="book-image" 
-             onerror="this.src='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400'">
+<div class="book-card">
+    <a href="{{ url_for('book_detail', book_id=book.id) }}" class="book-card-link">
+        <img src="{{ book.image_url }}" alt="{{ book.title }}" class="book-image">
         <h3>{{ book.title }}</h3>
-        <p><strong>Tác giả:</strong> {{ book.author }}</p>
-        <p>{{ book.description[:100] }}{% if book.description|length > 100 %}...{% endif %}</p>
-        <div class="price">{{ "{:,.0f}".format(book.price) }} đ</div>
-        <p class="stock">📚 Còn lại: {{ book.stock }} cuốn</p>
-        {% if session.user_id %}
-            <a href="{{ url_for('add_to_cart', book_id=book.id) }}" class="btn">🛒 Thêm vào giỏ</a>
-        {% else %}
-            <a href="{{ url_for('login') }}" class="btn">Đăng nhập để mua</a>
-        {% endif %}
-    </div>
-    {% else %}
-    <p style="grid-column: 1/-1; text-align: center; color: white; font-size: 1.2rem;">
-        Không tìm thấy sách nào.
-    </p>
+        <p>{{ book.author }}</p>
+        <div class="price">{{ '{:,.0f}'.format(book.price) }}đ</div>
+        
+        <!-- Thêm đánh giá sao -->
+        <div class="book-rating">
+            {% set avg_rating = book.reviews|average_rating if book.reviews else 0 %}
+            {% for i in range(1, 6) %}
+                <span class="star {{ 'active' if i <= avg_rating|round|int else '' }}">★</span>
+            {% endfor %}
+            <span class="rating-count">({{ book.reviews|length }} đánh giá)</span>
+        </div>
+        
+        <div class="stock">
+            {% if book.stock > 0 %}
+                Còn {{ book.stock }} quyển
+            {% else %}
+                Hết hàng
+            {% endif %}
+        </div>
+    </a>
+    
+    <a href="{{ url_for('add_to_cart', book_id=book.id) }}" class="btn btn-primary">
+        Thêm vào giỏ hàng
+    </a>
+</div>
     {% endfor %}
 </div>
 

@@ -4,9 +4,10 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from functools import wraps
-
+import random
+from datetime import datetime, timedelta
 app = Flask(__name__)
-#app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://book_store_sql_user:wfcjH1HyloTKgWBbLjsC1VwQ8l2dflAn@dpg-d3j0he6mcj7s739iub3g-a.oregon-postgres.render.com/book_store_sql'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -32,6 +33,18 @@ class Book(db.Model):
     stock = db.Column(db.Integer, default=0)
     image_url = db.Column(db.String(500), default='https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class BookReview(db.Model):
+    __tablename__ = 'book_reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    book_id = db.Column(db.Integer, db.ForeignKey('books.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    book = db.relationship('Book', backref='reviews')
+    user = db.relationship('User', backref='reviews') 
 
 class Cart(db.Model):
     __tablename__ = 'cart'
@@ -157,6 +170,99 @@ def cart():
     cart_items = Cart.query.filter_by(user_id=session['user_id']).all()
     total = sum(item.book.price * item.quantity for item in cart_items)
     return render_template('cart.html', cart_items=cart_items, total=total)
+
+@app.route('/book/<int:book_id>')
+def book_detail(book_id):
+    book = Book.query.get_or_404(book_id)
+    
+    # Lấy đánh giá
+    reviews = BookReview.query.filter_by(book_id=book_id).order_by(BookReview.created_at.desc()).all()
+    
+    # Tính điểm trung bình
+    avg_rating = db.session.query(db.func.avg(BookReview.rating)).filter_by(book_id=book_id).scalar() or 0
+    
+    # Thống kê đánh giá
+    rating_stats = db.session.query(
+        BookReview.rating, 
+        db.func.count(BookReview.id)
+    ).filter_by(book_id=book_id).group_by(BookReview.rating).all()
+    
+    # Sách liên quan (cùng thể loại hoặc cùng tác giả)
+    related_books = Book.query.filter(
+        (Book.author == book.author) | (Book.id != book_id)
+    ).limit(4).all()
+    
+    # Kiểm tra xem người dùng đã mua sách này chưa
+    user_purchased = False
+    if 'user_id' in session:
+        # Thay đổi logic kiểm tra đã mua
+        user_purchased = Order.query.filter(
+            Order.user_id == session['user_id'], 
+            Order.status == 'completed',
+            Order.items.like(f'%{book.title}%')
+        ).first() is not None
+    
+    return render_template('book_detail.html', 
+                           book=book, 
+                           reviews=reviews, 
+                           avg_rating=avg_rating,
+                           rating_stats=rating_stats,
+                           related_books=related_books,
+                           user_purchased=user_purchased)
+
+@app.route('/book/<int:book_id>/review', methods=['POST'])
+@login_required
+def add_book_review(book_id):
+    book = Book.query.get_or_404(book_id)
+    
+    # Kiểm tra người dùng đã mua sách
+    order = Order.query.join(Order.items).filter(
+        Order.user_id == session['user_id'], 
+        Order.status == 'completed',
+        db.text(f"items LIKE '%{book.title}%'")
+    ).first()
+    
+    if not order:
+        flash('Bạn phải mua sách để có thể đánh giá!', 'error')
+        return redirect(url_for('book_detail', book_id=book_id))
+    
+    rating = request.form.get('rating', type=int)
+    comment = request.form.get('comment')
+    
+    if not rating or rating < 1 or rating > 5:
+        flash('Vui lòng chọn đánh giá từ 1-5 sao!', 'error')
+        return redirect(url_for('book_detail', book_id=book_id))
+    
+    # Kiểm tra xem người dùng đã đánh giá sách này chưa
+    existing_review = BookReview.query.filter_by(
+        book_id=book_id, 
+        user_id=session['user_id']
+    ).first()
+    
+    if existing_review:
+        # Cập nhật đánh giá cũ
+        existing_review.rating = rating
+        existing_review.comment = comment
+        flash('Đã cập nhật đánh giá!', 'success')
+    else:
+        # Tạo đánh giá mới
+        review = BookReview(
+            book_id=book_id, 
+            user_id=session['user_id'], 
+            rating=rating, 
+            comment=comment
+        )
+        db.session.add(review)
+        flash('Cảm ơn đánh giá của bạn!', 'success')
+    
+    db.session.commit()
+    return redirect(url_for('book_detail', book_id=book_id))
+
+@app.template_filter('average_rating')
+def average_rating(reviews):
+    if not reviews:
+        return 0
+    return sum(review.rating for review in reviews) / len(reviews)
 
 @app.route('/my-orders')
 @login_required
@@ -398,6 +504,275 @@ def delete_book(book_id):
     db.session.delete(book)
     db.session.commit()
     flash('Đã xóa sách!', 'success')
+    return redirect(url_for('admin'))
+
+# Order Management Routes
+@app.route('/admin/manage_orders')
+@admin_required
+def manage_orders():
+    """Quản lý tất cả đơn hàng"""
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', 'all')
+    search = request.args.get('search', '')
+    per_page = 15
+    
+    # Tạo query cơ bản
+    query = Order.query
+    
+    # Lọc theo trạng thái
+    if status_filter != 'all':
+        query = query.filter_by(status=status_filter)
+    
+    # Tìm kiếm theo ID đơn hàng hoặc tên người dùng
+    if search:
+        query = query.join(User).filter(
+            (Order.id == int(search) if search.isdigit() else False) |
+            (User.username.ilike(f'%{search}%'))
+        )
+    
+    # Phân trang và sắp xếp
+    pagination = query.order_by(Order.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    orders = pagination.items
+    total_pages = pagination.pages
+    
+    # Thống kê
+    total_orders = Order.query.count()
+    pending_orders = Order.query.filter_by(status='pending').count()
+    completed_orders = Order.query.filter_by(status='completed').count()
+    cancelled_orders = Order.query.filter_by(status='cancelled').count()
+    total_revenue = db.session.query(db.func.sum(Order.total)).filter_by(status='completed').scalar() or 0
+    
+    # Lấy thông tin user cho mỗi đơn hàng
+    for order in orders:
+        order.user = User.query.get(order.user_id)
+    
+    return render_template('manage_orders.html',
+                         orders=orders,
+                         page=page,
+                         total_pages=total_pages,
+                         status_filter=status_filter,
+                         search=search,
+                         total_orders=total_orders,
+                         pending_orders=pending_orders,
+                         completed_orders=completed_orders,
+                         cancelled_orders=cancelled_orders,
+                         total_revenue=total_revenue)
+
+@app.route('/admin/manage_order/<int:order_id>')
+@admin_required
+def admin_order_detail(order_id):
+    """Xem chi tiết đơn hàng (admin)"""
+    order = Order.query.get_or_404(order_id)
+    user = User.query.get(order.user_id)
+    
+    # Lấy tất cả đơn hàng của user này
+    user_orders = Order.query.filter_by(user_id=user.id).order_by(Order.created_at.desc()).all()
+    
+    return render_template('admin_order_detail.html', 
+                         order=order, 
+                         user=user,
+                         user_orders=user_orders)
+
+@app.route('/admin/manage_order/<int:order_id>/update_status', methods=['POST'])
+@admin_required
+def update_order_status(order_id):
+    """Cập nhật trạng thái đơn hàng"""
+    order = Order.query.get_or_404(order_id)
+    new_status = request.form.get('status')
+    
+    if new_status not in ['pending', 'processing', 'completed', 'cancelled']:
+        flash('Trạng thái không hợp lệ!', 'error')
+        return redirect(url_for('admin_order_detail', order_id=order_id))
+    
+    old_status = order.status
+    order.status = new_status
+    db.session.commit()
+    
+    status_names = {
+        'pending': 'Chờ xử lý',
+        'processing': 'Đang xử lý',
+        'completed': 'Hoàn thành',
+        'cancelled': 'Đã hủy'
+    }
+    
+    flash(f'Đã cập nhật trạng thái từ "{status_names[old_status]}" sang "{status_names[new_status]}"!', 'success')
+    return redirect(url_for('admin_order_detail', order_id=order_id))
+
+@app.route('/admin/manage_order/<int:order_id>/delete', methods=['POST'])
+@admin_required
+def delete_order(order_id):
+    """Xóa đơn hàng"""
+    order = Order.query.get_or_404(order_id)
+    
+    # Chỉ cho phép xóa đơn hàng đã hủy
+    if order.status != 'cancelled':
+        flash('Chỉ có thể xóa đơn hàng đã hủy!', 'error')
+        return redirect(url_for('admin_order_detail', order_id=order_id))
+    
+    db.session.delete(order)
+    db.session.commit()
+    
+    flash(f'Đã xóa đơn hàng #{order_id}!', 'success')
+    return redirect(url_for('manage_orders'))
+
+@app.route('/admin/manage_orders/export')
+@admin_required
+def export_orders():
+    """Xuất danh sách đơn hàng ra CSV"""
+    import csv
+    from io import StringIO
+    from flask import make_response
+    
+    status_filter = request.args.get('status', 'all')
+    
+    # Lấy đơn hàng theo bộ lọc
+    query = Order.query
+    if status_filter != 'all':
+        query = query.filter_by(status=status_filter)
+    
+    orders = query.order_by(Order.created_at.desc()).all()
+    
+    # Tạo CSV
+    si = StringIO()
+    writer = csv.writer(si)
+    
+    # Header
+    writer.writerow(['ID', 'Người dùng', 'Tổng tiền', 'Trạng thái', 'Ngày đặt', 'Sản phẩm'])
+    
+    # Dữ liệu
+    for order in orders:
+        user = User.query.get(order.user_id)
+        writer.writerow([
+            order.id,
+            user.username,
+            f'{order.total:,.0f}đ',
+            order.status,
+            order.created_at.strftime('%d/%m/%Y %H:%M'),
+            order.items
+        ])
+    
+    # Tạo response
+    output = make_response(si.getvalue())
+    output.headers["Content-Disposition"] = f"attachment; filename=orders_{status_filter}_{datetime.now().strftime('%Y%m%d')}.csv"
+    output.headers["Content-type"] = "text/csv"
+    
+    return output
+
+@app.route('/admin/statistics')
+@admin_required
+def admin_statistics():
+    """Thống kê tổng quan"""
+    # Thống kê đơn hàng
+    total_orders = Order.query.count()
+    pending_orders = Order.query.filter_by(status='pending').count()
+    processing_orders = Order.query.filter_by(status='processing').count()
+    completed_orders = Order.query.filter_by(status='completed').count()
+    cancelled_orders = Order.query.filter_by(status='cancelled').count()
+    
+    # Thống kê doanh thu
+    total_revenue = db.session.query(db.func.sum(Order.total)).filter_by(status='completed').scalar() or 0
+    pending_revenue = db.session.query(db.func.sum(Order.total)).filter_by(status='pending').scalar() or 0
+    
+    # Top khách hàng
+    top_customers = db.session.query(
+        User.id,
+        User.username,
+        User.email,
+        db.func.count(Order.id).label('order_count'),
+        db.func.sum(Order.total).label('total_spent')
+    ).join(Order).group_by(User.id).order_by(db.func.sum(Order.total).desc()).limit(10).all()
+    
+    # Sách bán chạy (phân tích từ items text)
+    books_sold = {}
+    orders = Order.query.filter_by(status='completed').all()
+    for order in orders:
+        items = order.items.split(', ')
+        for item in items:
+            # Format: "Tên sách xSố lượng"
+            parts = item.rsplit(' x', 1)
+            if len(parts) == 2:
+                book_name = parts[0]
+                quantity = int(parts[1])
+                books_sold[book_name] = books_sold.get(book_name, 0) + quantity
+    
+    top_books = sorted(books_sold.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    # Thống kê người dùng
+    total_users = User.query.count()
+    admin_users = User.query.filter_by(is_admin=True).count()
+    
+    # Tổng số sách
+    total_books = Book.query.count()
+    total_stock = db.session.query(db.func.sum(Book.stock)).scalar() or 0
+    
+    # Tính giá trị trung bình mỗi đơn hàng (chỉ tính đơn đã hoàn thành)
+    average_order_value = (total_revenue / completed_orders) if completed_orders > 0 else 0
+
+
+    return render_template('admin_statistics.html',
+                         total_orders=total_orders,
+                         pending_orders=pending_orders,
+                         processing_orders=processing_orders,
+                         completed_orders=completed_orders,
+                         cancelled_orders=cancelled_orders,
+                         total_revenue=total_revenue,
+                         pending_revenue=pending_revenue,
+                         top_customers=top_customers,
+                         top_books=top_books,
+                         total_users=total_users,
+                         admin_users=admin_users,
+                         total_books=total_books,
+                         total_stock=total_stock,
+                         average_order_value=average_order_value)
+
+@app.route('/admin/export_statistics')
+@admin_required
+def export_statistics():
+    period = request.args.get('period', 'all')
+
+    # Ở đây bạn có thể tạo file Excel hoặc CSV xuất dữ liệu thống kê
+    # Ví dụ: chỉ tạo file CSV đơn giản để test
+
+    import csv
+    from io import StringIO
+    from flask import make_response
+
+    si = StringIO()
+    cw = csv.writer(si)
+    cw.writerow(["Tên sách", "Số lượng bán"])
+
+    # Lấy dữ liệu bán chạy nhất (giống trong admin_statistics)
+    books_sold = {}
+    orders = Order.query.filter_by(status='completed').all()
+    for order in orders:
+        items = order.items.split(', ')
+        for item in items:
+            parts = item.rsplit(' x', 1)
+            if len(parts) == 2:
+                name = parts[0]
+                qty = int(parts[1])
+                books_sold[name] = books_sold.get(name, 0) + qty
+
+    for name, qty in sorted(books_sold.items(), key=lambda x: x[1], reverse=True):
+        cw.writerow([name, qty])
+
+    response = make_response(si.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=statistics.csv"
+    response.headers["Content-type"] = "text/csv"
+    return response
+
+@app.route('/seed-book-reviews')
+@admin_required
+def seed_book_reviews_route():
+    try:
+        seed_book_reviews()
+        flash('Đã seed dữ liệu đánh giá sách thành công!', 'success')
+    except Exception as e:
+        flash(f'Lỗi khi seed dữ liệu đánh giá: {str(e)}', 'error')
+    
     return redirect(url_for('admin'))
 
 if __name__ == '__main__':

@@ -6,6 +6,9 @@
     <title>{% block title %}Tiệm sách Rozy{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    {% block head %}{% endblock %}
 </head>
 <body>
     <div class="wrapper">
@@ -35,6 +38,12 @@
                             </a>
                             <a href="{{ url_for('manage_users') }}">
                                 <i class="fas fa-users"></i> Quản lý người dùng
+                            </a>
+                            <a href="{{ url_for('manage_orders') }}">
+                                <i class="fas fa-shopping-cart"></i> Quản lý đơn hàng
+                            </a>
+                            <a href="{{ url_for('admin_statistics') }}">
+                                <i class="fas fa-chart-bar"></i> Thống kê
                             </a>
                         </div>
                     </div>
@@ -119,7 +128,7 @@
             transition: transform 0.3s;
         }
         
-        .dropdown.active .dropdown-toggle i {
+        .dropdown.active .dropdown-toggle i.fa-caret-down {
             transform: rotate(180deg);
         }
         
@@ -130,13 +139,16 @@
             background: white;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            min-width: 220px;
+            min-width: 240px;
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
             transition: all 0.3s;
             z-index: 1000;
             margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+
         }
         
         .dropdown.active .dropdown-menu {
@@ -154,10 +166,16 @@
             text-decoration: none;
             transition: all 0.3s;
             border-bottom: 1px solid #f0f0f0;
+            width: 100%;
+        }
+        
+        .dropdown-menu a:first-child {
+            border-radius: 8px 8px 0 0;
         }
         
         .dropdown-menu a:last-child {
             border-bottom: none;
+            border-radius: 0 0 8px 8px;
         }
         
         .dropdown-menu a:hover {
@@ -169,6 +187,7 @@
             width: 20px;
             text-align: center;
             color: #666;
+            font-size: 1em;
         }
         
         .dropdown-menu a:hover i {

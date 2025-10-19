@@ -1,0 +1,32 @@
+{
+    // 🔧 Nhận diện file Flask template là Jinja để tránh lỗi cú pháp
+    "files.associations": {
+        "*.html": "jinja-html"
+    },
+
+    // 🚫 Tắt kiểm tra JavaScript nội bộ trong template HTML
+    "javascript.validate.enable": false,
+
+    // 🚫 Tắt kiểm tra CSS nếu bạn có nhiều inline style trong Jinja
+    "css.validate": false,
+
+    // 🚫 Tắt linting trong các file HTML template (tùy chọn)
+    "html.validate.scripts": false,
+    "html.validate.styles": false,
+
+    // 👁️ Tùy chọn: bật màu cú pháp đẹp cho Jinja
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": [
+                    "meta.embedded.block.jinja",
+                    "meta.embedded.line.jinja"
+                ],
+                "settings": {
+                    "foreground": "#FFB86C",
+                    "fontStyle": "italic"
+                }
+            }
+        ]
+    }
+}
